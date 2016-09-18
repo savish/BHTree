@@ -1,0 +1,9 @@
+[package]
+name = "bhtree"
+version = "0.1.0"
+authors = ["Alan Kavishe <alan@filteris.co.za>"]
+
+[[bin]]
+name = "bh"
+
+[dependencies]
