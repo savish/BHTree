@@ -42,3 +42,16 @@ deploy:cargo:
   artifacts:
     paths:
     - public
+
+# Generate pages from docs
+pages:
+  script:
+  - mkdir .public
+  - cp -a target/doc/. .public
+  - cp index.html .public/
+  - mv .public public
+  artifacts:
+    paths:
+    - public
+  only:
+  - master
