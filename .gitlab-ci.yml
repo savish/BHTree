@@ -46,6 +46,7 @@ deploy:cargo:
 # Generate pages from docs
 pages:
   script:
+  - cargo doc
   - mkdir .public
   - cp -a target/doc/. .public
   - cp index.html .public/
