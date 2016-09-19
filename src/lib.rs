@@ -1,16 +1,63 @@
-//! Barnes Hut Tree library
+//! # Barnes-Hut Algorithm
+//!
+//! A Rust implementation of the Barnes-Hut tree in 3 dimensions.
+//!
+//! This implementation focuses on the use of Rusts's enumerations to describe
+//! multiple coordniate systems, as well as the tree structure that forms the heart
+//! of the algorithm.
+//!
+//! # Description
+//!
+//! A detailed discussion on the Barnes-Hut algorithm is given [here][1].
+//!
+//! ## Implementation details
+//!
+//! The main components of this implementation are:
+//!
+//! - `Point <enum>`
+//! - `Bounds <struct>`
+//! - `Body <struct>`
+//! - `BHTree <enum>`
+//!
+//! There are 3 available coordinate systems to choose from:
+//!
+//! - `Cartesian` : `x`, `y`, `z`
+//! - `Cylindrical` : `r`, `phi`, `z`
+//! - `Spherical` : `rho`, `phi`, `theta`
+//!
+//! These are determined at the `Point` level (as variants of the enumeration), and,
+//! for the most part, cannot be interchanged. The chosen system is used to describe
+//! the limits of the `Bounds` instances and the centre of mass of the `Body`
+//! instances and tree nodes.
+//!
+//! Based on the algorithm, the `BHTree` enumeration has 3 variants:
+//!
+//! - `Empty` : a tree node with no constituent `Body` instances
+//! - `Node` : a tree node with exactly one consitient `Body` instance
+//! - `Nodes` : a tree node with child nodes
+//!
+//!
+//! [1]: http://arborjs.org/docs/barnes-hut
+//!
 use std::ops::{Add, Sub};
 use std::fmt;
 
+// Convenience imports
 use Point::{Cartesian, Cylindrical, Spherical};
 use BHTree::{Empty, Node, Nodes};
 
 const MATH_PI: f64 = std::f64::consts::PI;
 
 
+
+/// Return the middle point of a line defined along an axis.
+///
+/// For instance, the line from 3.0 -> 5.0 would return 4.0
 fn subdivide_line(lower: f64, upper: f64) -> f64 {
     lower + ((upper - lower) / 2.0)
 }
+
+
 
 /// Defines a three-dimensional coordinate in space.
 ///
@@ -43,6 +90,23 @@ impl Point {
     /// Returns a new `Point::Cartesian` variant, at (0, 0, 0)
     pub fn new() -> Point { Cartesian(0.0, 0.0, 0.0) }
 
+    /// Returns a new `Point` instance.
+    ///
+    /// This method creates a point instance by specifying individual values
+    /// for the axes, as well as choosing a variant.
+    ///
+    /// # Arguments
+    /// - **point** : a `Point` instance used to determine the returned variant
+    /// - **dim0, dim1, dim2** : the values of the point dimensions (axes)
+    ///
+    /// # Examples
+    /// ```
+    /// use bhtree::*;
+    ///
+    /// // `Point::new()` creates a new `Cartesian` point at (0, 0, 0)
+    /// let p = Point::create(&Point::new(), 3f64, 4f64, 5f64);
+    /// assert_eq!(p, Point::Cartesian(3.0, 4.0, 5.0));     // true
+    /// ```
     pub fn create(point: &Point, dim0: f64, dim1: f64, dim2: f64) -> Point {
         match *point {
             Cartesian(..) => Cartesian(dim0, dim1, dim2),
@@ -415,6 +479,7 @@ pub struct Body {
 }
 
 impl Body {
+    /// Returns a new `Body` instance with the provided parameters
     pub fn new(centre: Point, mass: f64) -> Body {
         Body {
             mass: mass,
@@ -423,7 +488,7 @@ impl Body {
     }
 
     /// Returns a new body that is the 'sum' of this one and the provided one.
-    /// Specifically the noew body parmeters are:
+    /// Specifically the new body parmeters are:
     ///
     /// - `mass` Sum of the masses of the two bodies
     /// - `centre` Centre of mass of the two bodies
@@ -470,10 +535,14 @@ pub enum BHTree {
 }
 
 impl BHTree {
+    /// Returns a new `BHTree::Empty` variant instance
+    ///
+    /// By default, this uses the Cartesian coordinate system
     pub fn new() -> BHTree {
         BHTree::Empty(Bounds::new(&Point::new()))
     }
 
+    /// Inserts a new `Body` instance recursively into the tree
     pub fn insert(&mut self, body: Body) {
         match self {
             &mut Empty(bounds) => {
