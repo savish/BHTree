@@ -33,8 +33,8 @@
 //! Based on the algorithm, the `BHTree` enumeration has 3 variants:
 //!
 //! - `Empty` : a tree node with no constituent `Body` instances
-//! - `Node` : a tree node with exactly one consitient `Body` instance
-//! - `Nodes` : a tree node with child nodes
+//! - `External` : a tree node with exactly one consitient `Body` instance
+//! - `Internal` : a tree node with child nodes
 //!
 //!
 //! [1]: http://arborjs.org/docs/barnes-hut
@@ -44,7 +44,7 @@ use std::fmt;
 
 // Convenience imports
 use Point::{Cartesian, Cylindrical, Spherical};
-use BHTree::{Empty, Node, Nodes};
+use BHTree::{Empty, External, Internal};
 
 const MATH_PI: f64 = std::f64::consts::PI;
 
@@ -523,15 +523,15 @@ impl fmt::Display for Body {
 
 /// Defines a barnes-hut tree.
 ///
-/// This data structure has a recursive variant (`Nodes`).
+/// This data structure has a recursive variant (`Internal`).
 #[derive(Debug)]
 pub enum BHTree {
     /// An empty tree node
     Empty(Bounds),
     /// A tree node with a single body
-    Node(Bounds, Body),
+    External(Bounds, Body),
     /// A tree node with child nodes
-    Nodes(Bounds, Body, Vec<Box<BHTree>>),
+    Internal(Bounds, Body, Vec<Box<BHTree>>),
 }
 
 impl BHTree {
@@ -547,10 +547,10 @@ impl BHTree {
         match self {
             &mut Empty(bounds) => {
                 if bounds.contains(&body.centre) {
-                    *self = Node(bounds, body)
+                    *self = External(bounds, body)
                 }
             },
-            &mut Node(bounds, self_body) => {
+            &mut External(bounds, self_body) => {
                 if bounds.contains(&body.centre) {
                     let mut children = Vec::new();
 
@@ -561,10 +561,10 @@ impl BHTree {
                         children.push(Box::new(child));
                     };
 
-                    *self = Nodes(bounds, self_body.combine(&body), children)
+                    *self = Internal(bounds, self_body.combine(&body), children)
                 }
             },
-            &mut Nodes(bounds, ref mut self_body, ref mut children) => {
+            &mut Internal(bounds, ref mut self_body, ref mut children) => {
                 if bounds.contains(&body.centre) {
                     for child in children {
                         child.insert(body)
@@ -584,11 +584,11 @@ impl BHTree {
                 tree = tree + format!("{}\n", "Empty").as_str();
                 tree
             },
-            Node(_, body) => {
+            External(_, body) => {
                 tree = tree + format!("{}\n", body).as_str();
                 tree
             },
-            Nodes(_, body, ref children) => {
+            Internal(_, body, ref children) => {
                 tree = tree + format!("{}\n", body).as_str();
                 if children.len() > 0 {
                     let display_level = level + 1;
@@ -608,7 +608,7 @@ impl BHTree {
 mod tests {
     use super::*;
     use super::Point::{Cartesian};
-    use super::BHTree::{Empty, Node, Nodes};
+    use super::BHTree::{Empty, External, Internal};
 
     #[test]
     fn bounds_new_default() {
@@ -634,7 +634,7 @@ mod tests {
         let mut t = BHTree::new();
         t.insert(Body { centre: Cartesian(0.0, 0.0, 0.0), mass: 100.0 });
         match t {
-            Node(_, body) => assert_eq!(body.mass, 100f64),
+            External(_, body) => assert_eq!(body.mass, 100f64),
             _ => assert!(false),
         }
     }
@@ -646,7 +646,7 @@ mod tests {
         t.insert(Body { centre: Cartesian(0.4, 0.4, 0.4), mass: 100.0 });
         t.insert(Body { centre: Cartesian(-0.6, -0.6, -0.6), mass: 100.0 });
         match t {
-            Nodes(_, body, children) => {
+            Internal(_, body, children) => {
                 assert_eq!(body.centre, Cartesian(0.2, 0.2, 0.2));
                 assert_eq!(body.mass, 300f64);
                 assert_eq!(children.len(), 8);
